@@ -42,6 +42,9 @@ public class Application {
 
     parsingAurgument(args);
 
+    int batches = (int) (Math.ceil(requestSize / 1000.0));
+    int batchSize = requestSize > 1000 ? 1000 : requestSize;
+
     CloudSolrClient client = newCloudSolrClient();
     client.connect();
     client.setDefaultCollection(collectionName);
@@ -69,26 +72,34 @@ public class Application {
 
     queryExecutor.prestartAllCoreThreads();
 
-    List<Future<QueryResponse>> futures = new ArrayList<>(requestSize);
+    List<Future<QueryResponse>> futures = new ArrayList<>(poolSize * 2);
     CompletionService<QueryResponse> queryService = new ExecutorCompletionService<>(queryExecutor);
 
     System.out.println("Starting concurrent requests");
-    for (int x = 0; x < requestSize; x++) {
-      Callable queryCallable = () -> client.query(query, METHOD.POST);
-      futures.add(queryService.submit(queryCallable));
-    }
 
-    System.out.println("Getting results");
-    for (Future<QueryResponse> completedQuery : futures) {
-      try {
-        QueryResponse response = completedQuery.get();
-        System.out.println("Results size: " + response.getResults().size());
-      } catch (InterruptedException | ExecutionException e) {
-        System.out.println("Unable to get query response");
-        Thread.currentThread().interrupt();
+    System.out.println("Batch size: " + batches);
+
+    for (int b = 0; b < batches; b++) {
+      System.out.println("Processing batch: " + b);
+      for (int x = 0; x < batchSize; x++) {
+        Callable queryCallable = () -> client.query(query, METHOD.POST);
+        futures.add(queryService.submit(queryCallable));
+        System.out.println("Submitted request number: " + x);
       }
-    }
 
+      System.out.println("Getting results");
+      for (Future<QueryResponse> completedQuery : futures) {
+        try {
+          QueryResponse response = completedQuery.get();
+          System.out.println("Results size: " + response.getResults().size());
+        } catch (InterruptedException | ExecutionException e) {
+          System.out.println("Unable to get query response");
+          Thread.currentThread().interrupt();
+        }
+      }
+
+      futures.clear();
+    }
     System.out.println("DONE");
     client.close();
     System.out.println("CLOSED");
