@@ -41,9 +41,9 @@ public class Application {
     System.out.println("Starting...");
 
     parsingAurgument(args);
-
-    int batches = (int) (Math.ceil(requestSize / 1000.0));
-    int batchSize = requestSize > 1000 ? 1000 : requestSize;
+    int groupSize = 100;
+    int batches = (int) (Math.ceil(requestSize / (1.0 * groupSize)));
+    int batchSize = requestSize > groupSize ? groupSize : requestSize;
 
     CloudSolrClient client = newCloudSolrClient();
     client.connect();
@@ -88,9 +88,9 @@ public class Application {
       }
 
       System.out.println("Getting results");
-      for (Future<QueryResponse> completedQuery : futures) {
+      for (int i = 0; i < futures.size(); i++) {
         try {
-          QueryResponse response = completedQuery.get();
+          QueryResponse response = queryService.take().get();
           System.out.println("Results size: " + response.getResults().size());
         } catch (InterruptedException | ExecutionException e) {
           System.out.println("Unable to get query response");
