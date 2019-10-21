@@ -25,7 +25,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrQuery.ORDER;
 import org.apache.solr.client.solrj.SolrRequest.METHOD;
-import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -33,11 +32,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class Application {
 
-  static String collectionName = "catalog_index";
+  static String collectionName = "catalog";
   static int requestSize = 1;
   static int poolSize = 128;
 
-  public static void main(String[] args) throws IOException, SolrServerException {
+  public static void main(String[] args) throws IOException {
 
     System.out.println("Starting...");
 
@@ -52,8 +51,8 @@ public class Application {
     SolrQuery query = new SolrQuery();
     query.setQuery("*:*");
     query.setSort("score ", ORDER.desc);
-    query.setStart(Integer.getInteger("0"));
-    query.setRows(Integer.getInteger("100"));
+    query.setStart(0);
+    query.setRows(100);
 
     ThreadFactory threadFactory = Executors.defaultThreadFactory();
 
@@ -70,10 +69,10 @@ public class Application {
 
     queryExecutor.prestartAllCoreThreads();
 
-    List<Future<QueryResponse>> futures = new ArrayList<>(128);
+    List<Future<QueryResponse>> futures = new ArrayList<>(requestSize);
     CompletionService<QueryResponse> queryService = new ExecutorCompletionService<>(queryExecutor);
 
-    System.out.println("Starting current requests");
+    System.out.println("Starting concurrent requests");
     for (int x = 0; x < requestSize; x++) {
       Callable queryCallable = () -> client.query(query, METHOD.POST);
       futures.add(queryService.submit(queryCallable));
@@ -93,13 +92,11 @@ public class Application {
     System.out.println("DONE");
     client.close();
     System.out.println("CLOSED");
-
-
   }
 
   static CloudSolrClient newCloudSolrClient() {
     return new CloudSolrClient.Builder(
-            Arrays.asList("10.0.89.11:2181,10.0.852.214:2181,10.0.93.72:2181".split(",")),
+            Arrays.asList("10.0.89.11:2181,10.0.85.214:2181,10.0.93.72:2181".split(",")),
             Optional.ofNullable("/solr7"))
         .build();
   }
@@ -107,12 +104,16 @@ public class Application {
   static void parsingAurgument(String[] args) {
     Options options = new Options();
 
-    Option sizeInput = new Option("s", "sizeInput", true, "Request Size");
-    sizeInput.setRequired(true);
-    options.addOption(sizeInput);
+    Option requestSizeInput = new Option("r", "requestSizeInput", true, "Request Size");
+    requestSizeInput.setRequired(true);
+    options.addOption(requestSizeInput);
+
+    Option poolSizeInput = new Option("p", "poolSizeInput", true, "Pool Size");
+    poolSizeInput.setRequired(false);
+    options.addOption(poolSizeInput);
 
     Option collectionInput = new Option("c", "collectionInput", true, "Collection/Alias Name");
-    collectionInput.setRequired(true);
+    collectionInput.setRequired(false);
     options.addOption(collectionInput);
 
     CommandLineParser parser = new DefaultParser();
@@ -121,7 +122,8 @@ public class Application {
 
     try {
       cmd = parser.parse(options, args);
-      requestSize = Integer.parseInt(cmd.getOptionValue("sizeInput"));
+      requestSize = Integer.parseInt(cmd.getOptionValue("requestSizeInput"));
+      poolSize = Integer.parseInt(cmd.getOptionValue("poolSizeInput"));
       collectionName = cmd.getOptionValue("collectionInput");
     } catch (ParseException e) {
       System.out.println(e.getMessage());
