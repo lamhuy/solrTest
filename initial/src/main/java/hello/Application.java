@@ -41,7 +41,7 @@ public class Application {
     System.out.println("Starting...");
 
     parsingAurgument(args);
-    int groupSize = 100;
+    int groupSize = 1000;
     int batches = (int) (Math.ceil(requestSize / (1.0 * groupSize)));
     int batchSize = requestSize > groupSize ? groupSize : requestSize;
 
@@ -81,23 +81,25 @@ public class Application {
 
     for (int b = 0; b < batches; b++) {
       System.out.println("Processing batch: " + b);
+      long startTime = System.currentTimeMillis();
       for (int x = 0; x < batchSize; x++) {
         Callable queryCallable = () -> client.query(query, METHOD.POST);
         futures.add(queryService.submit(queryCallable));
-        System.out.println("Submitted request number: " + x);
+        //System.out.println("Submitted request number: " + x);
       }
 
       System.out.println("Getting results");
       for (int i = 0; i < futures.size(); i++) {
         try {
           QueryResponse response = queryService.take().get();
-          System.out.println("Results size: " + response.getResults().size());
+          //System.out.println("Results size: " + response.getResults().size());
         } catch (InterruptedException | ExecutionException e) {
           System.out.println("Unable to get query response");
           Thread.currentThread().interrupt();
         }
       }
-
+      long endTime = System.currentTimeMillis() - startTime;
+      System.out.println("Time elapse for " + groupSize + " requests: " + endTime + " ms");
       futures.clear();
     }
     System.out.println("DONE");
