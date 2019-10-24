@@ -77,8 +77,8 @@ public class Application {
 
     System.out.println("Starting concurrent requests");
 
-    System.out.println("Batch size: " + batches);
-
+    System.out.println("Number batches: " + batches);
+    
     for (int b = 0; b < batches; b++) {
       System.out.println("Processing batch: " + b);
       long startTime = System.currentTimeMillis();
@@ -99,7 +99,7 @@ public class Application {
         }
       }
       long endTime = System.currentTimeMillis() - startTime;
-      System.out.println("Time elapse for " + groupSize + " requests: " + endTime + " ms");
+      System.out.println("Time elapse for " + batchSize + " requests: " + endTime + " ms");
       futures.clear();
     }
     System.out.println("DONE");
