@@ -41,7 +41,7 @@ public class Application {
     System.out.println("Starting...");
 
     parsingAurgument(args);
-    int groupSize = 1000;
+    int groupSize = 250;
     int batches = (int) (Math.ceil(requestSize / (1.0 * groupSize)));
     int batchSize = requestSize > groupSize ? groupSize : requestSize;
 
@@ -53,7 +53,6 @@ public class Application {
 
     SolrQuery query = new SolrQuery();
     query.setQuery("*:*");
-    query.setSort("score ", ORDER.desc);
     query.setStart(0);
     query.setRows(100);
 
