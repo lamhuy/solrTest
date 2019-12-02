@@ -72,12 +72,12 @@ public class Application {
 
     queryExecutor.prestartAllCoreThreads();
 
-    List<Future<QueryResponse>> futures = new ArrayList<>(poolSize * 2);
+    List<Future<QueryResponse>> futures = new ArrayList<>(batchSize);
     CompletionService<QueryResponse> queryService = new ExecutorCompletionService<>(queryExecutor);
 
     System.out.println("Starting concurrent requests");
-
-    System.out.println("Number batches: " + batches);
+    System.out.println("Number of batches: " + batches);
+    System.out.println("Batch Size: " + batchSize);
     
     for (int b = 0; b < batches; b++) {
       System.out.println("Processing batch: " + b);
@@ -87,7 +87,9 @@ public class Application {
         futures.add(queryService.submit(queryCallable));
         //System.out.println("Submitted request number: " + x);
       }
-
+      long submitTime = System.currentTimeMillis() - startTime;
+      System.out.println("Time to submit " + batchSize + " requests: " + submitTime + " ms");
+      
       System.out.println("Getting results");
       for (int i = 0; i < futures.size(); i++) {
         try {
