@@ -75,25 +75,29 @@ public class Application {
     CompletionService<QueryResponse> queryService = new ExecutorCompletionService<>(queryExecutor);
 
     System.out.println("Starting concurrent requests");
+
     System.out.println("Number of batches: " + batches);
     System.out.println("Batch Size: " + batchSize);
-    
+    long totalTime = 0;
     for (int b = 0; b < batches; b++) {
       System.out.println("Processing batch: " + b);
       long startTime = System.currentTimeMillis();
+      int futureSize = 0;
       for (int x = 0; x < batchSize; x++) {
         Callable queryCallable = () -> client.query(query, METHOD.POST);
-        futures.add(queryService.submit(queryCallable));
-        //System.out.println("Submitted request number: " + x);
+        queryService.submit(queryCallable);
+        futureSize++;
+ //    System.out.println("Submitted request number: " + x);
       }
+
       long submitTime = System.currentTimeMillis() - startTime;
       System.out.println("Time to submit " + batchSize + " requests: " + submitTime + " ms");
-      
+
       System.out.println("Getting results");
-      for (int i = 0; i < futures.size(); i++) {
+      for (int i = 0; i < futureSize; i++) {
         try {
           QueryResponse response = queryService.take().get();
-          //System.out.println("Results size: " + response.getResults().size());
+      //    System.out.println("Results size ( " + i + " ): " + response.getResults().size());
         } catch (InterruptedException | ExecutionException e) {
           System.out.println("Unable to get query response");
           Thread.currentThread().interrupt();
@@ -101,9 +105,11 @@ public class Application {
       }
       long endTime = System.currentTimeMillis() - startTime;
       System.out.println("Time elapse for " + batchSize + " requests: " + endTime + " ms");
-      futures.clear();
+      totalTime+=endTime;
     }
     System.out.println("DONE");
+    System.out.println("Submitted: " + batches*batchSize + " records in " + totalTime + " ms");
+    System.out.println("Time per record: " + totalTime/(batches*batchSize) + " ms");
     client.close();
     System.out.println("CLOSED");
   }
@@ -111,6 +117,7 @@ public class Application {
   static CloudSolrClient newCloudSolrClient() {
     return new CloudSolrClient.Builder(
             Arrays.asList("10.0.89.11:2181,10.0.85.214:2181,10.0.93.72:2181".split(",")),
+            //Arrays.asList("10.0.91.134:2181,10.0.84.208:2181,10.0.93.128:2181".split(",")),
             Optional.ofNullable("/solr7"))
         .build();
   }
